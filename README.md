@@ -1,50 +1,88 @@
-# Ethereum and Substrate Address Generator
+# Ethereum and Substrate Key Generation Script
 
-This Python script allows you to generate both Ethereum (H160) and Substrate (SS58) addresses from a given private key. The script is designed to work with secp256k1 private keys, which are commonly used in Ethereum and some Substrate-based blockchains.
+This script provides a simple and efficient way to generate both Ethereum and Substrate addresses from a mnemonic seed. It utilizes the `eth_keys` library for generating Ethereum keys and the `subkey` tool for generating Substrate addresses. 
 
-## Features
+## Overview
 
-- **Private Key to Public Key Conversion:** Converts a given secp256k1 private key into its corresponding public key.
-- **Ethereum Address Generation:** Generates an Ethereum (H160) address from the public key.
-- **Substrate Address Generation:** Generates a Substrate (SS58) address from the public key, using the specified prefix.
+The script performs the following tasks:
+
+1. **Generate a Mnemonic Seed:** 
+   - A 24-word mnemonic seed is generated using the BIP-39 standard, which serves as the foundation for creating private keys and addresses.
+
+2. **Derive Seed from Mnemonic:**
+   - The mnemonic seed is hashed using the SHA-256 algorithm to produce a 256-bit seed. This seed is used to generate cryptographic keys.
+
+3. **Generate secp256k1 Key and Ethereum Address:**
+   - A secp256k1 private key is derived from the seed, which is then used to generate the corresponding public key and Ethereum address. The address is generated using Ethereum's checksum format.
+
+4. **Generate sr25519 Key and Substrate Address:**
+   - Using the `subkey` tool, the script generates a Substrate address (formatted with SS58) from the same mnemonic seed. The sr25519 scheme is used for key generation, ensuring compatibility with Substrate-based blockchains.
+
+## Benefits
+
+- **Dual-Chain Compatibility:** This script allows users to generate both Ethereum and Substrate addresses from the same mnemonic seed, making it highly versatile for developers working across different blockchain platforms.
+  
+- **Mnemonic-based Key Derivation:** Using a mnemonic seed offers a human-readable way to back up and restore private keys, making the process more user-friendly.
+
+- **Secure Key Generation:** The use of SHA-256 and secp256k1 cryptography ensures the security of the generated keys, adhering to industry standards for blockchain security.
+
+- **Automated Substrate Address Generation:** The script automatically runs `subkey` commands to generate Substrate addresses, simplifying the process for users unfamiliar with Substrate tooling.
+
+## Drawbacks
+
+- **External Dependency on Subkey:** The script relies on the `subkey` command-line tool for generating Substrate addresses. This adds an external dependency, which users need to have installed and configured on their system.
+  
+- **Limited Error Handling:** While the script includes basic error handling for the `subkey` command, it might not cover all edge cases, especially when dealing with different network configurations or unexpected output formats from `subkey`.
+
+- **No Support for Other Key Schemes:** The script is limited to secp256k1 for Ethereum and sr25519 for Substrate. It does not support other key derivation schemes such as ed25519.
 
 ## Requirements
 
 - Python 3.x
-- The following Python libraries:
-  - `substrate-interface`
-  - `eth-keys`
-  - `eth-utils`
-  - `eth-hash`
+- `eth_keys` Python package
+- `mnemonic` Python package
+- `subkey` command-line tool
 
-You can install the required libraries using pip:
+## Installation
 
-```bash
-pip install substrate-interface eth-keys eth-utils eth-hash
-```
+To use this script, follow these steps:
 
-## Install the program
+1. **Install Python Packages:**
+   ```
+   pip install eth_keys mnemonic eth_utils
+   ```
 
-```
-git clone https://github.com/your-username/evm2substrate
-cd evm2substrate
-```
+2. **Run The Script:**
+   ```
+   python3 evm2substrate.py
+   ```
 
-## Run the Script
+3. The script will output:
+   - A generated mnemonic seed.
+   - The secp256k1 private key, public key, and Ethereum address.
+   - The sr25519 public key and Substrate address.
+   - See example below:
+     ```
+     Mnemonic: race draft casual crew muscle coffee clarify oak armor airport gain heart situate nominee scout mechanic wrist special media degree duty worth deliver stone
 
-```
-python3 evm2substrate.py
-```
+     secp256k1 Private Key: 0x4c0883a6910395b6c0dfd7d3cdccf18c37b13b2e8723f2e1fc856a91c9e5e4a2
+     secp256k1 Public Key: 0x046baf0a953d58ceee2d03c9b4b1f104bae0ea9d60fdca92e02c227ff693c2d306f0010e5a57d4fa09171a181bafe9b8a5c6d800ca2c5d2de1a44b95c19b7c6c0f
+     Ethereum Address: 0x00000000219ab540356cBB839Cbe05303d7705Fa
 
-## Input Your Private Key
+     sr25519 Public Key: 0xf1b92bbfcb4b5bcfbb7b58c7b789bb2bbdb13e29eae0a705fbc39fa29b112061
+     Substrate Address: 5GrwvaEF5zXb26Fz9rcQpDWSamgAeM789bGz7vqTzyqdC5Q
+     ```
 
-When prompted, enter your private key in hexadecimal format (with or without the 0x prefix). 
+     **WARNING: DO NOT USE THESE ADDRESSES OR KEYS IN THE EXAMPLE ABOVE IN PRODUCTION!! DO NOT SEND FUNDS TO THESE ADDRESSES FOR ANY REASON!!**
 
-Don't worry, your private key ins't exposed or keylogged in the terminal.
+## Points To Consider
 
-The script will then output the corresponding Ethereum and Substrate addresses.
+1. This script provides a streamlined way to generate and manage keys across Ethereum and Substrate blockchains. While it offers great versatility and security, users should be aware of         its dependencies and the need for further error handling in more complex use cases.
 
-## Key Points
+2. You can add the generated Ethereum wallet address to your wallet by importing an account and using the private key provided in your output.
 
-- The generated Substrate wallet address will allow you to send and receive funds **only if the Substrate blockchain is EVM compatible OR the Substrate blockchain use the secp256k1 elliptic hash.**
-- **DO NOT store, send, or receive funds to this generated wallet address if the blockchain supports cryptographic hashes ed25519 or sr25519. You will lose your funds.**
+3. You can add the generated Substrate wallet address to your Polkadot/Kusama/Substrate wallet by importing an account and specifying the **24-word mnemonic** provided in the output.
+
+4. Please check your wallets to see if the generated accounts imported to your wallet successfully. If so, you can safely send, receive, and transfer funds to and from these wallets on their respective networks.
+
+5. **AS ALWAYS, DO NOT GIVE OUT YOUR PRIVATE KEY OR MNEMONIC PHRASE TO ANYONE!!**
