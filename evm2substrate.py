@@ -1,59 +1,69 @@
-from substrateinterface.utils.ss58 import ss58_encode
-from eth_keys import keys
-from getpass import getpass  # Import the getpass module
+import subprocess
+import json
+from eth_keys import keys as eth_keys
+from mnemonic import Mnemonic
+from hashlib import sha256
+import eth_utils
 
-def private_key_to_public_key(private_key_hex):
-    # Strip '0x' prefix if present
-    if private_key_hex.startswith('0x'):
-        private_key_hex = private_key_hex[2:]
-    
-    # Convert the private key to a public key (secp256k1)
-    private_key = keys.PrivateKey(bytes.fromhex(private_key_hex))
+# Generate a mnemonic seed
+def generate_mnemonic():
+    mnemo = Mnemonic("english")
+    mnemonic = mnemo.generate(strength=256)
+    return mnemonic
+
+# Derive seed from mnemonic
+def mnemonic_to_seed(mnemonic):
+    return sha256(mnemonic.encode()).digest()
+
+# Generate secp256k1 key and Ethereum address from seed
+def generate_secp256k1_key_and_address(seed):
+    private_key = eth_keys.PrivateKey(seed[:32])
     public_key = private_key.public_key
-    public_key_bytes = public_key.to_bytes()
-    
-    # Debugging: Print the length and hex value of the public key
-    print(f"Public Key (hex): {public_key_bytes.hex()}")
-    print(f"Public Key Length: {len(public_key_bytes)} bytes")
-    
-    return public_key_bytes
+    ethereum_address = public_key.to_checksum_address()
+    return private_key, public_key, ethereum_address
 
-def public_key_to_h160(public_key_bytes):
-    # Generate the Ethereum address directly using eth_keys library
-    public_key = keys.PublicKey(public_key_bytes)
-    eth_address = public_key.to_checksum_address()
-    
-    # Debugging: Print the Ethereum address
-    print(f"Ethereum Address (H160): {eth_address}")
-    
-    return eth_address
-
-def public_key_to_ss58(public_key_bytes, prefix=42):
-    # Adjust public key length if needed (Substrate expects 32 bytes for some key types)
-    if len(public_key_bytes) > 32:
-        public_key_bytes = public_key_bytes[:32]
-    
-    # Generate the SS58 address from the (potentially shortened) public key
-    ss58_addr = ss58_encode(public_key_bytes, prefix)
-    
-    # Debugging: Print the SS58 address
-    print(f"Substrate Address (SS58): {ss58_addr}")
-    
-    return ss58_addr
+# Generate Substrate address using subkey (no changes here)
+def generate_substrate_address_with_subkey(mnemonic):
+    try:
+        result = subprocess.run(
+            ['subkey', 'inspect', '--network', 'substrate', '--scheme', 'sr25519', mnemonic],
+            capture_output=True, text=True, check=True
+        )
+        output = result.stdout
+        
+        public_key_line = next(line for line in output.splitlines() if line.startswith("  Public key (SS58):"))
+        address_line = next(line for line in output.splitlines() if line.startswith("  SS58 Address:"))
+        
+        public_key = public_key_line.split(":")[1].strip()
+        ss58_address = address_line.split(":")[1].strip()
+        
+        return {
+            'publicKey': public_key,
+            'ss58Address': ss58_address
+        }
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating Substrate address with subkey: {e}")
+        return None
+    except StopIteration:
+        print("Error: Could not find the expected output in subkey response.")
+        return None
 
 def main():
-    # Use getpass to hide the private key input
-    private_key_hex = getpass("Enter your private key in hex format: ").strip()
+    mnemonic = generate_mnemonic()
+    seed = mnemonic_to_seed(mnemonic)
+
+    print("Mnemonic:", mnemonic)
+
+    secp_private_key, secp_public_key, ethereum_address = generate_secp256k1_key_and_address(seed)
+    print("\nsecp256k1 Private Key:", secp_private_key.to_hex())
+    print("secp256k1 Public Key:", secp_public_key.to_hex())
+    print("Ethereum Address:", ethereum_address)
+
+    substrate_keypair = generate_substrate_address_with_subkey(mnemonic)
     
-    try:
-        public_key_bytes = private_key_to_public_key(private_key_hex)
-        
-        ss58_address = public_key_to_ss58(public_key_bytes)
-        h160_address = public_key_to_h160(public_key_bytes)
-        
-        print(f"\nFinal Addresses:\nSS58 Address: {ss58_address}\nH160 Address: {h160_address}")
-    except Exception as e:
-        print(f"Error: {e}")
+    if substrate_keypair:
+        print("\nsr25519 Public Key:", substrate_keypair['publicKey'])
+        print("Substrate Address:", substrate_keypair['ss58Address'])
 
 if __name__ == "__main__":
     main()
